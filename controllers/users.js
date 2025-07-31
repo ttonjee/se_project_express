@@ -11,6 +11,35 @@ const getUsers = (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 };
+
+// Create controller to get a single user by ID
+// If user does not exist, return 404
+// if query param has invalid ID, return 400
+
+const getUserById = (req, res) => {
+  User.findById(req.params.userId)
+    .orFail(() => {
+      const error = new Error("User not found");
+      error.statusCode = ERROR_CODES.NOT_FOUND;
+      throw error;
+    })
+    .then((user) => res.status(200).json(user))
+    .catch((err) => {
+      console.error("Error fetching user:", err);
+      if (err.name === "CastError") {
+        return res
+          .status(ERROR_CODES.BAD_REQUEST)
+          .json({ message: "Invalid ID" });
+      }
+      if (err.statusCode === ERROR_CODES.NOT_FOUND) {
+        return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
+      }
+      res
+        .status(ERROR_CODES.SERVER_ERROR)
+        .json({ message: "An error has occurred on the server." });
+    });
+};
+
 const createUser = (req, res) => {
   const { name, avatar } = req.body;
   User.create({ name, avatar })
@@ -27,4 +56,5 @@ const createUser = (req, res) => {
 module.exports = {
   getUsers,
   createUser,
+  getUserById,
 };
