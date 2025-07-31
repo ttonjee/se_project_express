@@ -1,5 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
+
 const app = express();
 
 const itemsRouter = require("./routes/items");
@@ -18,7 +19,7 @@ mongoose
 
 app.use(express.json());
 
-// Mock user middleware
+// Mock user middleware (add next!)
 app.use((req, res, next) => {
   req.user = {
     _id: "5d8b8592978f8bd833ca8133",

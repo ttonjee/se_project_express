@@ -4,10 +4,12 @@ const ERROR_CODES = require("../utils/errors");
 const getItems = async (req, res) => {
   try {
     const items = await ClothingItem.find({});
-    res.json(items);
+    return res.json(items);
   } catch (err) {
     console.error("Error fetching items:", err);
-    res.status(ERROR_CODES.SERVER_ERROR).json({ message: "Server error" });
+    return res
+      .status(ERROR_CODES.SERVER_ERROR)
+      .json({ message: "Server error" });
   }
 };
 
