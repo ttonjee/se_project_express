@@ -1,6 +1,5 @@
 const ClothingItem = require("../models/clothingItem");
 const ERROR_CODES = require("../utils/errors");
-const handleItemError = require("../utils/handleItemError");
 
 const getItems = async (req, res) => {
   try {
@@ -21,7 +20,7 @@ const getItemById = async (req, res) => {
     });
     res.json(item);
   } catch (err) {
-    handleItemError(err, res);
+    console.error(err);
   }
 };
 
@@ -54,7 +53,7 @@ const deleteItem = async (req, res) => {
     );
     res.json(item);
   } catch (err) {
-    handleItemError(err, res);
+    console.error(err);
   }
 };
 
@@ -71,7 +70,7 @@ const likeItem = async (req, res) => {
     });
     res.json(item);
   } catch (err) {
-    handleItemError(err, res);
+    console.error(err);
   }
 };
 
@@ -88,7 +87,7 @@ const dislikeItem = async (req, res) => {
     });
     res.json(item);
   } catch (err) {
-    handleItemError(err, res);
+    console.error(err);
   }
 };
 
