@@ -12,10 +12,6 @@ const getUsers = (req, res) => {
     });
 };
 
-// Create controller to get a single user by ID
-// If user does not exist, return 404
-// if query param has invalid ID, return 400
-
 const getUserById = (req, res) => {
   User.findById(req.params.userId)
     .orFail(() => {
