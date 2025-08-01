@@ -12,35 +12,22 @@ const getItems = async (req, res) => {
       .json({ message: "Server error" });
   }
 };
-
-const getItemById = async (req, res) => {
-  try {
-    const item = await ClothingItem.findById(req.params.itemId).orFail(() => {
-      const error = new Error("Item not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
-    });
-    res.json(item);
-  } catch (err) {
-    console.error(err);
-  }
-};
-
 const createItem = async (req, res) => {
   const { name, weather, imageUrl } = req.body;
   const owner = req.user._id;
 
   try {
     const item = await ClothingItem.create({ name, weather, imageUrl, owner });
-    res.status(201).json(item);
+    return res.status(201).json(item);
   } catch (err) {
-    console.error("Error creating item:", err);
     if (err.name === "ValidationError") {
       return res
         .status(ERROR_CODES.BAD_REQUEST)
         .json({ message: "Invalid data" });
     }
-    res.status(ERROR_CODES.SERVER_ERROR).json({ message: "Server error" });
+    return res
+      .status(ERROR_CODES.SERVER_ERROR)
+      .json({ message: "Server error" });
   }
 };
 
@@ -53,9 +40,19 @@ const deleteItem = async (req, res) => {
         throw error;
       }
     );
-    res.json(item);
+    return res.json(item);
   } catch (err) {
-    console.error(err);
+    if (err.name === "CastError") {
+      return res
+        .status(ERROR_CODES.BAD_REQUEST)
+        .json({ message: "Invalid ID" });
+    }
+    if (err.statusCode === ERROR_CODES.NOT_FOUND) {
+      return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
+    }
+    return res
+      .status(ERROR_CODES.SERVER_ERROR)
+      .json({ message: "Server error" });
   }
 };
 
@@ -70,9 +67,19 @@ const likeItem = async (req, res) => {
       error.statusCode = ERROR_CODES.NOT_FOUND;
       throw error;
     });
-    res.json(item);
+    return res.json(item);
   } catch (err) {
-    console.error(err);
+    if (err.name === "CastError") {
+      return res
+        .status(ERROR_CODES.BAD_REQUEST)
+        .json({ message: "Invalid ID" });
+    }
+    if (err.statusCode === ERROR_CODES.NOT_FOUND) {
+      return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
+    }
+    return res
+      .status(ERROR_CODES.SERVER_ERROR)
+      .json({ message: "Server error" });
   }
 };
 
@@ -87,15 +94,24 @@ const dislikeItem = async (req, res) => {
       error.statusCode = ERROR_CODES.NOT_FOUND;
       throw error;
     });
-    res.json(item);
+    return res.json(item);
   } catch (err) {
-    console.error(err);
+    if (err.name === "CastError") {
+      return res
+        .status(ERROR_CODES.BAD_REQUEST)
+        .json({ message: "Invalid ID" });
+    }
+    if (err.statusCode === ERROR_CODES.NOT_FOUND) {
+      return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
+    }
+    return res
+      .status(ERROR_CODES.SERVER_ERROR)
+      .json({ message: "Server error" });
   }
 };
 
 module.exports = {
   getItems,
-  getItemById,
   createItem,
   deleteItem,
   likeItem,
