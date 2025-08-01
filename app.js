@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 // Mount all routes
 app.use("/", indexRouter);
 
-// Error handler (must have 4 params, keep `next` for Express even if unused)
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   res
     .status(ERROR_CODES.SERVER_ERROR)
