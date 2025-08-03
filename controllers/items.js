@@ -33,14 +33,21 @@ const createItem = async (req, res) => {
 
 const deleteItem = async (req, res) => {
   try {
-    const item = await ClothingItem.findByIdAndDelete(req.params.itemId).orFail(
-      () => {
-        const error = new Error("Item not found");
-        error.statusCode = ERROR_CODES.NOT_FOUND;
-        throw error;
-      }
-    );
-    return res.json(item);
+    const item = await ClothingItem.findById(req.params.itemId).orFail(() => {
+      const error = new Error("Item not found");
+      error.statusCode = ERROR_CODES.NOT_FOUND;
+      throw error;
+    });
+
+    // Check ownership
+    if (item.owner.toString() !== req.user._id) {
+      return res
+        .status(ERROR_CODES.FORBIDDEN)
+        .json({ message: "You are not authorized to delete this item." });
+    }
+
+    await item.deleteOne();
+    return res.status(200).json({ message: "Item deleted successfully." });
   } catch (err) {
     if (err.name === "CastError") {
       return res
