@@ -1,3 +1,3 @@
-const JWT_SECRET = "your-super-secret-key"; // Replace with env var later
+const JWT_SECRET = "your-super-secret-key";
 
-module.exports.JWT_SECRET = "your-secret-key";
+module.exports.JWT_SECRET = JWT_SECRET;

@@ -1,52 +1,58 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const ERROR_CODES = require("./utils/errors");
-const indexRouter = require("./routes/index");
-const auth = require("./middlewares/auth");
 const cors = require("cors");
+const auth = require("./middlewares/auth");
+const indexRouter = require("./routes/index");
+const ERROR_CODES = require("./utils/errors");
 
 const app = express();
 
 app.use(cors());
+app.use(express.json());
 
-const { PORT = 3001 } = process.env;
+const { PORT = 3001, NODE_ENV } = process.env;
 
+// Connect to MongoDB
 mongoose
   .connect("mongodb://127.0.0.1:27017/wtwr_db")
   .then(async () => {
     console.log("Connected to MongoDB");
 
-    // Force indexes (like 'unique: true') to be applied
-    const User = require("./models/user");
-    await User.syncIndexes();
-    console.log("User indexes synced");
+    // Ensure indexes like 'unique: true' are enforced (development only)
+    if (NODE_ENV !== "production") {
+      // eslint-disable-next-line global-require
+      const User = require("./models/user");
+      await User.syncIndexes();
+      console.log("User indexes synced");
+    }
   })
   .catch((err) => {
-    console.error("Failed to connect to MongoDB", err);
+    console.error("Failed to connect to MongoDB:", err);
   });
 
-app.use(express.json());
-
-// Auth middleware must come BEFORE your routes that require authorization
+// Auth middleware (must come before protected routes)
 app.use(auth);
 
-// Mount all routes, including /signin and /signup handled in indexRouter
+// Mount main router
 app.use("/", indexRouter);
 
-// Error handling middleware
+// Centralized error handler
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
   res
     .status(ERROR_CODES.SERVER_ERROR)
     .json({ message: "An error has occurred on the server." });
 });
 
-// 404 handler (must be last)
+// 404 handler (must come last)
 app.use((req, res) => {
   res
     .status(ERROR_CODES.NOT_FOUND)
     .json({ message: "Requested resource not found" });
 });
 
+// Start server
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });
