@@ -1,6 +1,14 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt"); // Needed for findUserByCredentials
+const bcrypt = require("bcrypt");
 const validator = require("validator");
+
+// Custom error class for authentication errors
+class AuthError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -14,7 +22,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     validate: {
       validator(v) {
-        return validator.isURL(v);
+        return validator.isURL(v, {
+          protocols: ["http", "https"],
+          require_protocol: true,
+        });
       },
       message: "Invalid URL format for avatar",
     },
@@ -32,19 +43,20 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Password is required"],
     minlength: 6,
-    select: false, // <-- This hides it by default
+    select: false, // Hide password by default
   },
 });
 
-// 🔐 Custom static method for login
+// Static method to find user by credentials with custom AuthError
 userSchema.statics.findUserByCredentials = async function (email, password) {
-  const user = await this.findOne({ email }).select("+password"); // explicitly include password
-  if (!user) throw new Error("Invalid email or password");
+  const user = await this.findOne({ email }).select("+password");
+  if (!user || !user.password) throw new AuthError("Invalid email or password");
 
   const matched = await bcrypt.compare(password, user.password);
-  if (!matched) throw new Error("Invalid email or password");
+  if (!matched) throw new AuthError("Invalid email or password");
 
   return user;
 };
 
 module.exports = mongoose.model("User", userSchema);
+module.exports.AuthError = AuthError;

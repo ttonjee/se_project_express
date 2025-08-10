@@ -1,7 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const auth = require("./middlewares/auth");
+
+const User = require("./models/user");
 const indexRouter = require("./routes/index");
 const ERROR_CODES = require("./utils/errors");
 
@@ -18,10 +19,7 @@ mongoose
   .then(async () => {
     console.log("Connected to MongoDB");
 
-    // Ensure indexes like 'unique: true' are enforced (development only)
     if (NODE_ENV !== "production") {
-      // eslint-disable-next-line global-require
-      const User = require("./models/user");
       await User.syncIndexes();
       console.log("User indexes synced");
     }
@@ -30,29 +28,24 @@ mongoose
     console.error("Failed to connect to MongoDB:", err);
   });
 
-// Auth middleware (must come before protected routes)
-app.use(auth);
-
-// Mount main router
+// Main router
 app.use("/", indexRouter);
 
-// Centralized error handler
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
+// Error handler
+app.use((err, _, res, _next) => {
   console.error("Unhandled error:", err);
   res
     .status(ERROR_CODES.SERVER_ERROR)
     .json({ message: "An error has occurred on the server." });
 });
 
-// 404 handler (must come last)
+// 404 handler
 app.use((req, res) => {
   res
     .status(ERROR_CODES.NOT_FOUND)
     .json({ message: "Requested resource not found" });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });

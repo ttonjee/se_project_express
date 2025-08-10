@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const ERROR_CODES = require("../utils/errors");
 const { JWT_SECRET } = require("../utils/config");
+const { AuthError } = require("../models/user");
 
 const SALT_ROUNDS = 10;
 
@@ -45,14 +46,13 @@ const createUser = async (req, res) => {
   try {
     const { name, avatar, email, password } = req.body;
 
-    console.log(email, password);
+    console.log("Signup attempt for:", email);
+
     if (!email || !password) {
       return res
         .status(ERROR_CODES.BAD_REQUEST)
         .json({ message: "Email and password are required." });
     }
-
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -60,6 +60,8 @@ const createUser = async (req, res) => {
         .status(ERROR_CODES.CONFLICT)
         .json({ message: "Email already exists" });
     }
+
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     const newUser = await User.create({
       name,
@@ -73,43 +75,63 @@ const createUser = async (req, res) => {
       name: newUser.name,
       avatar: newUser.avatar,
       email: newUser.email,
+      // Don't return password!
     });
   } catch (err) {
-    if (err.code === 11000) {
-      return res
-        .status(ERROR_CODES.CONFLICT)
-        .json({ message: "Email already exists" });
-    }
+    console.error("Signup error:", err);
 
     if (err.name === "ValidationError") {
       return res
         .status(ERROR_CODES.BAD_REQUEST)
         .json({ message: "Invalid data" });
     }
+
+    if (err.code === 11000) {
+      return res
+        .status(ERROR_CODES.CONFLICT)
+        .json({ message: "Email already exists" });
+    }
+
     return res
       .status(ERROR_CODES.SERVER_ERROR)
       .json({ message: "An error occurred on the server" });
   }
 };
-
-// Login user and return JWT
 const login = (req, res) => {
   const { email, password } = req.body;
 
-  User.findUserByCredentials(email, password)
+  if (!email || !password) {
+    return res
+      .status(ERROR_CODES.BAD_REQUEST)
+      .json({ message: "Email and password are required" });
+  }
+
+  return User.findUserByCredentials(email, password)
     .then((user) => {
+      if (user.isBlocked || user.role === "guest") {
+        return res
+          .status(ERROR_CODES.FORBIDDEN)
+          .json({ message: "Access denied" });
+      }
+
       const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
         expiresIn: "7d",
       });
-      res.send({ token });
+
+      return res.status(ERROR_CODES.OK).json({ token, email: user.email });
     })
-    .catch(() => {
-      res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Invalid email or password" });
+    .catch((err) => {
+      if (err instanceof AuthError) {
+        return res
+          .status(ERROR_CODES.UNAUTHORIZED)
+          .json({ message: err.message });
+      }
+      console.error("Login error:", err);
+      return res
+        .status(ERROR_CODES.SERVER_ERROR)
+        .json({ message: "An error occurred on the server" });
     });
 };
-
 const getCurrentUser = (req, res) => {
   const userId = req.user._id;
 
@@ -143,9 +165,9 @@ const updateUserProfile = (req, res) => {
     userId,
     { name, avatar },
     {
-      new: true, // Return the updated document
-      runValidators: true, // Run schema validators on update
-      upsert: false, // Don't create if not found
+      new: true,
+      runValidators: true,
+      upsert: false,
     }
   )
     .orFail(() => {
