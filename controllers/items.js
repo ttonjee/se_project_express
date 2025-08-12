@@ -63,43 +63,6 @@ const deleteItem = async (req, res) => {
   }
 };
 
-const updateItem = async (req, res) => {
-  try {
-    const { name, weather, imageUrl } = req.body;
-    const item = await ClothingItem.findById(req.params.itemId).orFail(() => {
-      const error = new Error("Item not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
-    });
-
-    if (item.owner.toString() !== req.user._id) {
-      return res
-        .status(ERROR_CODES.FORBIDDEN)
-        .json({ message: "You are not authorized to update this item." });
-    }
-
-    item.name = name ?? item.name;
-    item.weather = weather ?? item.weather;
-    item.imageUrl = imageUrl ?? item.imageUrl;
-
-    await item.save();
-
-    return res.status(200).json(item);
-  } catch (err) {
-    if (err.name === "ValidationError" || err.name === "CastError") {
-      return res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Invalid input data" });
-    }
-    if (err.statusCode === ERROR_CODES.NOT_FOUND) {
-      return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
-    }
-    return res
-      .status(ERROR_CODES.SERVER_ERROR)
-      .json({ message: "Server error" });
-  }
-};
-
 const likeItem = async (req, res) => {
   try {
     const item = await ClothingItem.findByIdAndUpdate(
@@ -158,7 +121,6 @@ module.exports = {
   getItems,
   createItem,
   deleteItem,
-  updateItem,
   likeItem,
   dislikeItem,
 };

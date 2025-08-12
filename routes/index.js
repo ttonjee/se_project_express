@@ -11,10 +11,6 @@ router.post("/signup", createUser);
 
 router.use("/items", itemsRouter);
 
-router.use(authenticate);
-
 router.use("/users", usersRouter);
-
-router.use("/items", itemsRouter);
 
 module.exports = router;
