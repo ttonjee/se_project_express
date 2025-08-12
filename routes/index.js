@@ -6,12 +6,15 @@ const { authenticate } = require("../middlewares/auth");
 
 const router = express.Router();
 
-// Public auth routes
 router.post("/signin", login);
 router.post("/signup", createUser);
 
-// Protected routes
-router.use("/users", authenticate, usersRouter);
-router.use("/items", authenticate, itemsRouter);
+router.use("/items", itemsRouter);
+
+router.use(authenticate);
+
+router.use("/users", usersRouter);
+
+router.use("/items", itemsRouter);
 
 module.exports = router;

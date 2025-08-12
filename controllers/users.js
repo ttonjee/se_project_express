@@ -7,51 +7,16 @@ const { AuthError } = require("../models/user");
 
 const SALT_ROUNDS = 10;
 
-// Get all users
-const getUsers = (req, res) => {
-  User.find({})
-    .then((users) => res.status(200).json(users))
-    .catch(() =>
-      res
-        .status(ERROR_CODES.SERVER_ERROR)
-        .json({ message: "An error has occurred on the server." })
-    );
-};
-
-// Get user by ID
-const getUserById = (req, res) => {
-  User.findById(req.params.userId)
-    .orFail(() => {
-      const error = new Error("User not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
-    })
-    .then((user) => res.status(200).json(user))
-    .catch((err) => {
-      if (err.name === "CastError") {
-        return res
-          .status(ERROR_CODES.BAD_REQUEST)
-          .json({ message: "Invalid user ID" });
-      }
-      if (err.statusCode === ERROR_CODES.NOT_FOUND) {
-        return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
-      }
-      return res
-        .status(ERROR_CODES.SERVER_ERROR)
-        .json({ message: "An error has occurred on the server." });
-    });
-};
-
 const createUser = async (req, res) => {
   try {
     const { name, avatar, email, password } = req.body;
 
     console.log("Signup attempt for:", email);
 
-    if (!email || !password) {
+    if (!password || password.length < 6) {
       return res
         .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Email and password are required." });
+        .json({ message: "Password must be at least 6 characters long." });
     }
 
     const existingUser = await User.findOne({ email });
@@ -118,7 +83,7 @@ const login = (req, res) => {
         expiresIn: "7d",
       });
 
-      return res.status(ERROR_CODES.OK).json({ token, email: user.email });
+      return res.status(200).json({ token, email: user.email });
     })
     .catch((err) => {
       if (err instanceof AuthError) {
@@ -192,8 +157,6 @@ const updateUserProfile = (req, res) => {
 };
 
 module.exports = {
-  getUsers,
-  getUserById,
   createUser,
   login,
   getCurrentUser,
