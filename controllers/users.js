@@ -9,7 +9,7 @@ const SALT_ROUNDS = 10;
 
 const createUser = async (req, res) => {
   try {
-    const { name, avatar, email, password } = req.body;
+    const { email, password, name, avatar } = req.body;
 
     console.log("Signup attempt for:", email);
 

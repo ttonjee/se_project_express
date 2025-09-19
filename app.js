@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-
+require("dotenv").config();
 const User = require("./models/user");
 const indexRouter = require("./routes/index");
 const ERROR_CODES = require("./utils/errors");
