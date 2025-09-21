@@ -4,11 +4,20 @@ const cors = require("cors");
 require("dotenv").config();
 const User = require("./models/user");
 const indexRouter = require("./routes/index");
-const ERROR_CODES = require("./utils/errors");
+const { ERROR_CODES, NotFoundError } = require("./utils/errors");
+const { errorLogger, handleGeneralError, handleCelebrateError } = require("./middlewares/errors");
 
 const app = express();
 
-app.use(cors());
+// Configure CORS to allow requests from frontend
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3004',
+    'https://flexx.crabdance.com'
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 const { PORT = 3001, NODE_ENV } = process.env;
@@ -29,22 +38,22 @@ mongoose
   });
 
 // Main router
-app.use("/", indexRouter);
+app.use("/api", indexRouter);
 
-// Error handler
-app.use((err, _, res, _next) => {
-  console.error("Unhandled error:", err);
-  res
-    .status(ERROR_CODES.SERVER_ERROR)
-    .json({ message: "An error has occurred on the server." });
+// 404 handler - must come before error handlers
+app.use((req, res, next) => {
+  next(new NotFoundError("Requested resource not found"));
 });
 
-// 404 handler
-app.use((req, res) => {
-  res
-    .status(ERROR_CODES.NOT_FOUND)
-    .json({ message: "Requested resource not found" });
-});
+// Error handlers (in correct order):
+// 1. Error logger - logs all errors
+app.use(errorLogger);
+
+// 2. Celebrate validation error handler
+app.use(handleCelebrateError);
+
+// 3. Centralized error handler
+app.use(handleGeneralError);
 
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);

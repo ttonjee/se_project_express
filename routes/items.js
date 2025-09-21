@@ -7,15 +7,19 @@ const {
   dislikeItem,
 } = require("../controllers/items");
 const { authenticate } = require("../middlewares/auth");
+const {
+  validateItemCreation,
+  validateObjectId,
+} = require("../middlewares/validation");
 
 const router = express.Router();
 
 router.get("/", getItems); // public
 
 // protected routes
-router.post("/", authenticate, createItem);
-router.delete("/:itemId", authenticate, deleteItem);
-router.put("/:itemId/likes", authenticate, likeItem);
-router.delete("/:itemId/likes", authenticate, dislikeItem);
+router.post("/", authenticate, validateItemCreation, createItem);
+router.delete("/:itemId", authenticate, validateObjectId, deleteItem);
+router.put("/:itemId/likes", authenticate, validateObjectId, likeItem);
+router.delete("/:itemId/likes", authenticate, validateObjectId, dislikeItem);
 
 module.exports = router;

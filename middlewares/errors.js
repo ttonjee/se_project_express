@@ -1,5 +1,21 @@
 const { isCelebrateError } = require("celebrate");
-const ERROR_CODES = require("../utils/errors");
+const { ERROR_CODES, AppError, ValidationError, AuthError, NotFoundError, ConflictError, ServerError } = require("../utils/errors");
+
+// Error logging middleware - logs all errors but doesn't handle them
+const errorLogger = (err, req, res, next) => {
+  console.error("Error occurred:", {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+    userAgent: req.get('User-Agent'),
+    ip: req.ip
+  });
+  
+  // Pass the error to the next error handler
+  next(err);
+};
 
 const handleCelebrateError = (err, req, res, next) => {
   if (isCelebrateError(err)) {
@@ -9,8 +25,7 @@ const handleCelebrateError = (err, req, res, next) => {
       err.details.get("query");
 
     return res.status(ERROR_CODES.BAD_REQUEST).json({
-      message: "Validation error",
-      error: errorMessage.details[0].message,
+      message: errorMessage.details[0].message
     });
   }
 
@@ -18,22 +33,27 @@ const handleCelebrateError = (err, req, res, next) => {
 };
 
 const handleGeneralError = (err, req, res, next) => {
-  console.error("Error:", err);
+  // Error has already been logged by errorLogger middleware
+
+  // Handle custom AppError instances
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      message: err.message
+    });
+  }
 
   // Handle Mongoose validation errors
   if (err.name === "ValidationError") {
     const messages = Object.values(err.errors).map((val) => val.message);
     return res.status(ERROR_CODES.BAD_REQUEST).json({
-      message: "Validation error",
-      error: messages.join(", "),
+      message: messages.join(", ")
     });
   }
 
   // Handle MongoDB CastError (invalid ObjectId)
   if (err.name === "CastError") {
     return res.status(ERROR_CODES.BAD_REQUEST).json({
-      message: "Invalid ID format",
-      error: "Please provide a valid ID",
+      message: "Invalid ID format"
     });
   }
 
@@ -41,38 +61,33 @@ const handleGeneralError = (err, req, res, next) => {
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue)[0];
     return res.status(ERROR_CODES.CONFLICT).json({
-      message: "Conflict error",
-      error: `${field} already exists`,
+      message: `${field} already exists`
     });
   }
 
   // Handle JWT errors
   if (err.name === "JsonWebTokenError") {
     return res.status(ERROR_CODES.UNAUTHORIZED).json({
-      message: "Authentication error",
-      error: "Invalid token",
+      message: "Invalid token"
     });
   }
 
   if (err.name === "TokenExpiredError") {
     return res.status(ERROR_CODES.UNAUTHORIZED).json({
-      message: "Authentication error",
-      error: "Token has expired",
+      message: "Token has expired"
     });
   }
 
-  // Handle custom error objects with status codes
+  // Handle custom error objects with status codes (legacy support)
   if (err.statusCode) {
     return res.status(err.statusCode).json({
-      message: err.message || "An error occurred",
-      error: err.error || err.message,
+      message: err.message || "An error occurred"
     });
   }
 
   // Default server error
   return res.status(ERROR_CODES.SERVER_ERROR).json({
-    message: "Internal server error",
-    error: "Something went wrong on the server",
+    message: "Internal server error"
   });
 };
 
@@ -85,6 +100,7 @@ const handleNotFound = (req, res) => {
 };
 
 module.exports = {
+  errorLogger,
   handleCelebrateError,
   handleGeneralError,
   handleNotFound,

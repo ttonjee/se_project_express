@@ -1,14 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const validator = require("validator");
-
-// Custom error class for authentication errors
-class AuthError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "AuthError";
-  }
-}
+const { AuthError } = require("../utils/errors");
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -58,4 +51,3 @@ userSchema.statics.findUserByCredentials = async function (email, password) {
 };
 
 module.exports = mongoose.model("User", userSchema);
-module.exports.AuthError = AuthError;

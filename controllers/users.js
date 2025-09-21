@@ -1,29 +1,24 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
-const ERROR_CODES = require("../utils/errors");
+const { ValidationError, ConflictError, AuthError, NotFoundError, ServerError } = require("../utils/errors");
 const { JWT_SECRET } = require("../utils/config");
-const { AuthError } = require("../models/user");
 
 const SALT_ROUNDS = 10;
 
-const createUser = async (req, res) => {
+const createUser = async (req, res, next) => {
   try {
     const { email, password, name, avatar } = req.body;
 
     console.log("Signup attempt for:", email);
 
     if (!password || password.length < 6) {
-      return res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Password must be at least 6 characters long." });
+      return next(new ValidationError("Password must be at least 6 characters long."));
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res
-        .status(ERROR_CODES.CONFLICT)
-        .json({ message: "Email already exists" });
+      return next(new ConflictError("Email already exists"));
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
@@ -46,37 +41,27 @@ const createUser = async (req, res) => {
     console.error("Signup error:", err);
 
     if (err.name === "ValidationError") {
-      return res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Invalid data" });
+      return next(new ValidationError("Invalid data"));
     }
 
     if (err.code === 11000) {
-      return res
-        .status(ERROR_CODES.CONFLICT)
-        .json({ message: "Email already exists" });
+      return next(new ConflictError("Email already exists"));
     }
 
-    return res
-      .status(ERROR_CODES.SERVER_ERROR)
-      .json({ message: "An error occurred on the server" });
+    return next(new ServerError("An error occurred on the server"));
   }
 };
-const login = (req, res) => {
+const login = (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res
-      .status(ERROR_CODES.BAD_REQUEST)
-      .json({ message: "Email and password are required" });
+    return next(new ValidationError("Email and password are required"));
   }
 
   return User.findUserByCredentials(email, password)
     .then((user) => {
       if (user.isBlocked || user.role === "guest") {
-        return res
-          .status(ERROR_CODES.FORBIDDEN)
-          .json({ message: "Access denied" });
+        return next(new AuthError("Access denied"));
       }
 
       const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
@@ -86,43 +71,30 @@ const login = (req, res) => {
       return res.status(200).json({ token, email: user.email });
     })
     .catch((err) => {
-      if (err instanceof AuthError) {
-        return res
-          .status(ERROR_CODES.UNAUTHORIZED)
-          .json({ message: err.message });
+      if (err.name === "AuthError") {
+        return next(new AuthError(err.message));
       }
       console.error("Login error:", err);
-      return res
-        .status(ERROR_CODES.SERVER_ERROR)
-        .json({ message: "An error occurred on the server" });
+      return next(new ServerError("An error occurred on the server"));
     });
 };
-const getCurrentUser = (req, res) => {
+const getCurrentUser = (req, res, next) => {
   const userId = req.user._id;
 
   User.findById(userId)
     .orFail(() => {
-      const error = new Error("User not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
+      throw new NotFoundError("User not found");
     })
     .then((user) => res.status(200).json(user))
     .catch((err) => {
       if (err.name === "CastError") {
-        return res
-          .status(ERROR_CODES.BAD_REQUEST)
-          .json({ message: "Invalid user ID" });
+        return next(new ValidationError("Invalid user ID"));
       }
-      if (err.statusCode === ERROR_CODES.NOT_FOUND) {
-        return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
-      }
-      return res
-        .status(ERROR_CODES.SERVER_ERROR)
-        .json({ message: "An error has occurred on the server." });
+      return next(err);
     });
 };
 
-const updateUserProfile = (req, res) => {
+const updateUserProfile = (req, res, next) => {
   const userId = req.user._id;
   const { name, avatar } = req.body;
 
@@ -136,23 +108,14 @@ const updateUserProfile = (req, res) => {
     }
   )
     .orFail(() => {
-      const error = new Error("User not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
+      throw new NotFoundError("User not found");
     })
     .then((user) => res.status(200).json(user))
     .catch((err) => {
       if (err.name === "ValidationError") {
-        return res
-          .status(ERROR_CODES.BAD_REQUEST)
-          .json({ message: "Invalid data" });
+        return next(new ValidationError("Invalid data"));
       }
-      if (err.statusCode === ERROR_CODES.NOT_FOUND) {
-        return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
-      }
-      return res
-        .status(ERROR_CODES.SERVER_ERROR)
-        .json({ message: "An error has occurred on the server." });
+      return next(err);
     });
 };
 

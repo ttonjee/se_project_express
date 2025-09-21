@@ -1,6 +1,7 @@
 const express = require("express");
 const winston = require("winston");
 const { optionalAuthenticate } = require("../middlewares/auth");
+const { ValidationError } = require("../utils/errors");
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ const frontendLogger = winston.createLogger({
 });
 
 // Endpoint to receive frontend logs
-router.post("/", optionalAuthenticate, (req, res) => {
+router.post("/", optionalAuthenticate, (req, res, next) => {
   try {
     const { level, message, meta } = req.body;
 
@@ -40,7 +41,7 @@ router.post("/", optionalAuthenticate, (req, res) => {
 
     res.status(200).json({ success: true });
   } catch (error) {
-    res.status(400).json({ error: "Invalid log data" });
+    return next(new ValidationError("Invalid log data"));
   }
 });
 

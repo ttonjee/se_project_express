@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const ERROR_CODES = require("../utils/errors");
+const { AuthError } = require("../utils/errors");
 const { JWT_SECRET } = require("../utils/config");
 
 const authenticate = (req, res, next) => {
@@ -7,20 +7,14 @@ const authenticate = (req, res, next) => {
 
   // Check if authorization header exists and has correct format
   if (!authorization || !authorization.startsWith("Bearer ")) {
-    return res.status(ERROR_CODES.UNAUTHORIZED).json({
-      message: "Authorization required",
-      error: "Missing or invalid authorization header",
-    });
+    return next(new AuthError("Missing or invalid authorization header"));
   }
 
   const token = authorization.replace("Bearer ", "");
 
   // Validate token is not empty
   if (!token) {
-    return res.status(ERROR_CODES.UNAUTHORIZED).json({
-      message: "Authorization required",
-      error: "Token is required",
-    });
+    return next(new AuthError("Token is required"));
   }
 
   try {
@@ -28,10 +22,7 @@ const authenticate = (req, res, next) => {
 
     // Add additional validation if needed
     if (!payload._id) {
-      return res.status(ERROR_CODES.UNAUTHORIZED).json({
-        message: "Authorization required",
-        error: "Invalid token payload",
-      });
+      return next(new AuthError("Invalid token payload"));
     }
 
     req.user = payload;
@@ -48,10 +39,7 @@ const authenticate = (req, res, next) => {
       errorMessage = "Token not active";
     }
 
-    return res.status(ERROR_CODES.UNAUTHORIZED).json({
-      message: "Authorization required",
-      error: errorMessage,
-    });
+    return next(new AuthError(errorMessage));
   }
 };
 

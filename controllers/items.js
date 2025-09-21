@@ -1,19 +1,17 @@
 const ClothingItem = require("../models/clothingItem");
-const ERROR_CODES = require("../utils/errors");
+const { ValidationError, NotFoundError, ForbiddenError, ServerError } = require("../utils/errors");
 
-const getItems = async (req, res) => {
+const getItems = async (req, res, next) => {
   try {
     const items = await ClothingItem.find({});
     return res.json(items);
   } catch (err) {
     console.error("Error fetching items:", err);
-    return res
-      .status(ERROR_CODES.SERVER_ERROR)
-      .json({ message: "Server error" });
+    return next(new ServerError("Server error"));
   }
 };
 
-const createItem = async (req, res) => {
+const createItem = async (req, res, next) => {
   const { name, weather, imageUrl } = req.body;
   const owner = req.user._id;
 
@@ -22,98 +20,65 @@ const createItem = async (req, res) => {
     return res.status(201).json(item);
   } catch (err) {
     if (err.name === "ValidationError") {
-      return res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Invalid data" });
+      return next(new ValidationError("Invalid data"));
     }
-    return res
-      .status(ERROR_CODES.SERVER_ERROR)
-      .json({ message: "Server error" });
+    return next(new ServerError("Server error"));
   }
 };
 
-const deleteItem = async (req, res) => {
+const deleteItem = async (req, res, next) => {
   try {
     const item = await ClothingItem.findById(req.params.itemId).orFail(() => {
-      const error = new Error("Item not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
+      throw new NotFoundError("Item not found");
     });
 
     if (item.owner.toString() !== req.user._id) {
-      return res
-        .status(ERROR_CODES.FORBIDDEN)
-        .json({ message: "You are not authorized to delete this item." });
+      return next(new ForbiddenError("You are not authorized to delete this item."));
     }
 
     await item.deleteOne();
     return res.status(200).json({ message: "Item deleted successfully." });
   } catch (err) {
     if (err.name === "CastError") {
-      return res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Invalid ID" });
+      return next(new ValidationError("Invalid ID"));
     }
-    if (err.statusCode === ERROR_CODES.NOT_FOUND) {
-      return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
-    }
-    return res
-      .status(ERROR_CODES.SERVER_ERROR)
-      .json({ message: "Server error" });
+    return next(err);
   }
 };
 
-const likeItem = async (req, res) => {
+const likeItem = async (req, res, next) => {
   try {
     const item = await ClothingItem.findByIdAndUpdate(
       req.params.itemId,
       { $addToSet: { likes: req.user._id } },
       { new: true }
     ).orFail(() => {
-      const error = new Error("Item not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
+      throw new NotFoundError("Item not found");
     });
     return res.json(item);
   } catch (err) {
     if (err.name === "CastError") {
-      return res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Invalid ID" });
+      return next(new ValidationError("Invalid ID"));
     }
-    if (err.statusCode === ERROR_CODES.NOT_FOUND) {
-      return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
-    }
-    return res
-      .status(ERROR_CODES.SERVER_ERROR)
-      .json({ message: "Server error" });
+    return next(err);
   }
 };
 
-const dislikeItem = async (req, res) => {
+const dislikeItem = async (req, res, next) => {
   try {
     const item = await ClothingItem.findByIdAndUpdate(
       req.params.itemId,
       { $pull: { likes: req.user._id } },
       { new: true }
     ).orFail(() => {
-      const error = new Error("Item not found");
-      error.statusCode = ERROR_CODES.NOT_FOUND;
-      throw error;
+      throw new NotFoundError("Item not found");
     });
     return res.json(item);
   } catch (err) {
     if (err.name === "CastError") {
-      return res
-        .status(ERROR_CODES.BAD_REQUEST)
-        .json({ message: "Invalid ID" });
+      return next(new ValidationError("Invalid ID"));
     }
-    if (err.statusCode === ERROR_CODES.NOT_FOUND) {
-      return res.status(ERROR_CODES.NOT_FOUND).json({ message: err.message });
-    }
-    return res
-      .status(ERROR_CODES.SERVER_ERROR)
-      .json({ message: "Server error" });
+    return next(err);
   }
 };
 
