@@ -1,12 +1,5 @@
-// Error status codes
-const ERROR_CODES = {
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  CONFLICT: 409,
-  SERVER_ERROR: 500,
-};
+// Import constants
+const { ERROR_CODES } = require("./constants");
 
 // Import all error classes
 const AppError = require("./AppError");

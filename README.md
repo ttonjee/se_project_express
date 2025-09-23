@@ -53,3 +53,17 @@ Used for user authentication and secure access to protected routes.
 
 Middleware Patterns
 Custom middleware is used for authentication, request parsing, error handling, and mock user setup during development.
+
+## 🌐 Deployment
+
+The WTWR application is deployed and accessible at the following domains:
+
+**Frontend Application:**
+- **Domain:** https://flexx.crabdance.com
+- **Description:** The user interface for the WTWR application where users can interact with their wardrobe and clothing items
+
+**Backend API:**
+- **Domain:** https://api.flexx.crabdance.com
+- **Description:** RESTful API server handling authentication, data management, and business logic
+
+Both applications are deployed with proper CORS configuration to ensure secure communication between the frontend and backend services.

@@ -1,11 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const { errors } = require("celebrate");
 require("dotenv").config();
 const User = require("./models/user");
 const indexRouter = require("./routes/index");
-const { ERROR_CODES, NotFoundError } = require("./utils/errors");
-const { errorLogger, handleGeneralError, handleCelebrateError } = require("./middlewares/errors");
+const { NotFoundError } = require("./utils/errors");
+const { handleGeneralError } = require("./middlewares/errors");
+const { requestLogger, errorLogger } = require("./middlewares/logger");
 
 const app = express();
 
@@ -19,6 +21,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// Request logger
+app.use(requestLogger);
 
 const { PORT = 3001, NODE_ENV } = process.env;
 
@@ -46,11 +51,11 @@ app.use((req, res, next) => {
 });
 
 // Error handlers (in correct order):
-// 1. Error logger - logs all errors
-app.use(errorLogger);
+// 1. Celebrate validation error handler
+app.use(errors());
 
-// 2. Celebrate validation error handler
-app.use(handleCelebrateError);
+// 2. Error logger
+app.use(errorLogger);
 
 // 3. Centralized error handler
 app.use(handleGeneralError);

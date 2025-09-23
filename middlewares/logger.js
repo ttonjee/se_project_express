@@ -1,48 +1,42 @@
-const express = require("express");
 const winston = require("winston");
-const { optionalAuthenticate } = require("../middlewares/auth");
-const { ValidationError } = require("../utils/errors");
+const expressWinston = require("express-winston");
 
-const router = express.Router();
+// Custom formatter for log messages
+const messageFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.printf(({ level, message, meta, timestamp }) =>
+    `${timestamp} ${level}: ${meta?.error?.stack || message}`
+  )
+);
 
-// Create a separate logger for frontend logs
-const frontendLogger = winston.createLogger({
-  level: "info",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
+// Request logger
+const requestLogger = expressWinston.logger({
   transports: [
-    new winston.transports.File({
-      filename: "frontend.log",
-      level: "info",
+    new winston.transports.Console({
+      format: messageFormat,
     }),
     new winston.transports.File({
-      filename: "frontend-error.log",
-      level: "error",
+      filename: "request.log",
+      format: winston.format.json(),
     }),
   ],
 });
 
-// Endpoint to receive frontend logs
-router.post("/", optionalAuthenticate, (req, res, next) => {
-  try {
-    const { level, message, meta } = req.body;
-
-    // Add user information if authenticated
-    const logData = {
-      ...meta,
-      userId: req.user?._id || "anonymous",
-      source: "frontend",
-    };
-
-    // Log to appropriate level
-    frontendLogger.log(level, message, logData);
-
-    res.status(200).json({ success: true });
-  } catch (error) {
-    return next(new ValidationError("Invalid log data"));
-  }
+// Error logger
+const errorLogger = expressWinston.errorLogger({
+  transports: [
+    new winston.transports.Console({
+      format: messageFormat,
+    }),
+    new winston.transports.File({
+      filename: "error.log",
+      format: winston.format.json(),
+    }),
+  ],
+  format: winston.format.json(),
 });
 
-module.exports = router;
+module.exports = {
+  requestLogger,
+  errorLogger,
+};
